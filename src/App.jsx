@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-export default function Detectoo() {
+export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [image, setImage] = useState(null);
   const [result, setResult] = useState(null);

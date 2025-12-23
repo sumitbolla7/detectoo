@@ -10,8 +10,6 @@ export default function App() {
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [heatmapCanvas, setHeatmapCanvas] = useState(null);
   const [regions, setRegions] = useState([]);
-  const canvasRef = useRef(null);
-
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -29,17 +27,17 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  const analyzeImage = (file, imageData) => {
+  const analyzeImage = async (file, imageData) => {
     setLoading(true);
     setError(null);
     setResult(null);
     setShowHeatmap(false);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const isAI = Math.random() > 0.45;
       const confidence = Math.random() * 0.25 + (isAI ? 0.65 : 0.55);
       
-      const newRegions = generateRegions(imageData);
+      const newRegions = await generateRegions(imageData);
       setRegions(newRegions);
       
       const analysisResult = {
@@ -71,11 +69,9 @@ export default function App() {
   };
 
   const generateRegions = (imageData) => {
+  return new Promise((resolve) => {
     const img = new Image();
     img.src = imageData;
-    
-    const regionData = [];
-    const regionSize = 80;
 
     img.onload = () => {
       const canvas = document.createElement('canvas');
@@ -84,7 +80,10 @@ export default function App() {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0);
 
+      const regionSize = 80;
+      const regionData = [];
       let regionId = 0;
+
       for (let y = 0; y < img.height; y += regionSize) {
         for (let x = 0; x < img.width; x += regionSize) {
           const width = Math.min(regionSize, img.width - x);
@@ -94,20 +93,20 @@ export default function App() {
             const imgData = ctx.getImageData(x, y, width, height);
             const data = imgData.data;
 
-            let rSum = 0, gSum = 0, bSum = 0;
             let uniformity = 0;
 
             for (let i = 0; i < data.length; i += 4) {
-              rSum += data[i];
-              gSum += data[i + 1];
-              bSum += data[i + 2];
-              uniformity += Math.abs(data[i] - data[i + 1]) + Math.abs(data[i + 1] - data[i + 2]);
+              uniformity +=
+                Math.abs(data[i] - data[i + 1]) +
+                Math.abs(data[i + 1] - data[i + 2]);
             }
 
-            const pixelCount = data.length / 4;
-            uniformity = uniformity / pixelCount;
+            uniformity /= (data.length / 4);
+
             const isAI = uniformity < 20;
-            const confidence = isAI ? Math.round(70 + Math.random() * 30) : Math.round(30 + Math.random() * 40);
+            const confidence = isAI
+              ? Math.round(70 + Math.random() * 30)
+              : Math.round(30 + Math.random() * 40);
 
             regionData.push({
               id: regionId++,
@@ -124,11 +123,11 @@ export default function App() {
         }
       }
 
-      setRegions(regionData);
+      resolve(regionData);
     };
+  });
+};
 
-    return regionData;
-  };
 
   const createHeatmapCanvas = () => {
     if (!image || regions.length === 0) return;
